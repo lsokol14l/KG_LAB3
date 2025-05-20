@@ -43,14 +43,6 @@ void Render(double delta_time)
         }
         glEnd();
 
-        // (Необязательно) Нарисуем контрольные точки
-        glPointSize(6.0f);
-        glColor3f(1.0f, 0.0f, 0.0f);
-        glBegin(GL_POINTS);
-        glVertex2fv(P0);
-        glVertex2fv(P1);
-        glVertex2fv(P2);
-        glEnd();
         P1[1] = -0.5;
         // Рисуем кривую Безье
         glColor3f(0.2f, 0.7f, 1.0f);
@@ -70,7 +62,6 @@ void Render(double delta_time)
         float P1[2] = { 0.f, 0.5f };  // Верхняя точка (контрольная)
         float P2[2] = { 2.5f, -3.5f };  // Правый край
 
-
         // Рисуем кривую Безье
         glColor3f(0.2f, 0.7f, 1.0f);
         glBegin(GL_LINE_STRIP);
@@ -82,14 +73,6 @@ void Render(double delta_time)
         }
         glEnd();
 
-        // (Необязательно) Нарисуем контрольные точки
-        glPointSize(6.0f);
-        glColor3f(1.0f, 0.0f, 0.0f);
-        glBegin(GL_POINTS);
-        glVertex2fv(P0);
-        glVertex2fv(P1);
-        glVertex2fv(P2);
-        glEnd();
         P1[1] = -7.5;
         // Рисуем кривую Безье
         glColor3f(0.2f, 0.7f, 1.0f);
