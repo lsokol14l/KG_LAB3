@@ -1,3 +1,5 @@
+#pragma once
+
 #include <random>
 #include "MyOGL.h"
 #include <stdio.h>

@@ -1,4 +1,4 @@
-#include "Prism.h"
+п»ї#include "Prism.h"
 
 
 void WriteSquare(Point A, Point B, Point C, Point D) {
@@ -13,7 +13,7 @@ void Squads(Point Gap)// SQUADS
 {
 	glBegin(GL_QUADS);
 
-	// Все точки: только числа делятся на 2, Gap прибавляется после деления
+	// Р’СЃРµ С‚РѕС‡РєРё РїСЂРёР·РјС‹ СѓРјРµРЅСЊС€РµРЅРЅС‹Рµ РІ 2 СЂР°Р·Р° Рё СЃ СѓС‡РµС‚РѕРј СЃРјРµС‰РµРЅРёСЏ
 	Point A = { (1.0 / 2) / 2 + Gap.x,      (0.0) / 2 + Gap.y,        (0.0) / 2 + Gap.z };
 	Point A_t = { (1.0 / 2) / 2 + Gap.x,      (0.0) / 2 + Gap.y,        (1.0) / 2 + Gap.z };
 
@@ -38,7 +38,7 @@ void Squads(Point Gap)// SQUADS
 	Point H = { (2.0) / 2 + Gap.x,          (-7.0 / 2) / 2 + Gap.y,   (0.0) / 2 + Gap.z };
 	Point H_t = { (2.0) / 2 + Gap.x,          (-7.0 / 2) / 2 + Gap.y,   (1.0) / 2 + Gap.z };
 
-	// стена
+	// РїРѕС‚РѕР»РѕРє
 	WriteSquare(A, A_t, B_t, B);
 	WriteSquare(B, B_t, C_t, C);
 	WriteSquare(C, C_t, D_t, D);
@@ -48,7 +48,7 @@ void Squads(Point Gap)// SQUADS
 	WriteSquare(G, G_t, H_t, H);
 	WriteSquare(H, H_t, A_t, A);
 
-	//// пол и потолок
+	//// СЃС‚РµРЅРєРё
 	WriteSquare(A, B, C, D);
 	WriteSquare(D, G, H, A);
 	WriteSquare(D, E, H, A);
@@ -61,29 +61,29 @@ void Squads(Point Gap)// SQUADS
 
 	glEnd();
 
-	// --- Локальная система координат призмы ---
+	// --- СЂРёСЃСѓРµРј РѕСЃРё Р»СЃРє ---
 	glLineWidth(3.0f);
 
-	// Ось X (красная)
+	// РѕСЃСЊ X (РєСЂР°СЃРЅР°СЏ)
 	glColor3f(1.0f, 0.0f, 0.0f);
 	glBegin(GL_LINES);
 	glVertex3d(Gap.x, Gap.y, Gap.z);
 	glVertex3d(Gap.x + 2.5, Gap.y, Gap.z);
 	glEnd();
 
-	// Ось Y (зелёная)
+	// РћСЃСЊ Y (Р·РµР»РµРЅР°СЏ)
 	glColor3f(0.0f, 1.0f, 0.0f);
 	glBegin(GL_LINES);
 	glVertex3d(Gap.x, Gap.y, Gap.z);
 	glVertex3d(Gap.x, Gap.y + 2.5, Gap.z);
 	glEnd();
 
-	// Ось Z (синяя)
+	// РћСЃСЊ Z (РЎРёРЅСЏСЏ)
 	glColor3f(0.0f, 0.5f, 1.0f);
 	glBegin(GL_LINES);
 	glVertex3d(Gap.x, Gap.y, Gap.z);
 	glVertex3d(Gap.x, Gap.y, Gap.z + 2.5);
 	glEnd();
 
-	glLineWidth(1.0f); // Вернуть стандартную толщину линии
+	glLineWidth(1.0f);
 }
