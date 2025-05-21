@@ -109,7 +109,7 @@ void Squads(Point Gap)// SQUADS
 	Point H = { (2.0) / 2 + Gap.x,          (-7.0 / 2) / 2 + Gap.y,   (0.0) / 2 + Gap.z };
 	Point H_t = { (2.0) / 2 + Gap.x,          (-7.0 / 2) / 2 + Gap.y,   (1.0) / 2 + Gap.z };
 
-	// потолок
+	// стенки
 	WriteSquare(A, A_t, B_t, B);
 	WriteSquare(B, B_t, C_t, C);
 	WriteSquare(C, C_t, D_t, D);
@@ -119,22 +119,24 @@ void Squads(Point Gap)// SQUADS
 	WriteSquare(G, G_t, H_t, H);
 	WriteSquare(H, H_t, A_t, A);
 
-	//// стенки
+	//// пол и потолок
 	WriteSquare(A, B, C, D);
 	WriteSquare(D, G, H, A);
 	WriteSquare(D, E, H, A);
 	WriteSquare(D, E, F, G);
 
-	WriteSquare(A_t, B_t, C_t, D_t);
-	WriteSquare(D_t, E_t, H_t, A_t);
-	WriteSquare(D_t, G_t, H_t, A_t);
-	WriteSquare(D_t, E_t, F_t, G_t);
+	WriteSquare(D_t, C_t, B_t, A_t);
+	WriteSquare(A_t, H_t, E_t, D_t);
+	WriteSquare(A_t, H_t, G_t, D_t);
+	WriteSquare(G_t, F_t, E_t, D_t);
 
 	glEnd();
 
 	// --- рисуем оси лск ---
 	glLineWidth(3.0f);
-
+	glDisable(GL_LIGHTING);
+	glDisable(GL_TEXTURE_2D);
+	glDisable(GL_BLEND);
 	// ось X (красная)
 	glColor3f(1.0f, 0.0f, 0.0f);
 	glBegin(GL_LINES);
@@ -156,16 +158,23 @@ void Squads(Point Gap)// SQUADS
 	glVertex3d(Gap.x, Gap.y, Gap.z + 2.5);
 	glEnd();
 
+	glEnable(GL_LIGHTING);
+	glEnable(GL_TEXTURE_2D);
+	glEnable(GL_BLEND);
 	glLineWidth(1.0f);
 }
 
 void WriteSquare(Point A, Point B, Point C, Point D) {
+	// Вычисляем нормаль для четырёхугольника
+	Point N = getNormalSquare(A, B, C, D);
 	glColor3d(0.5, 1, 0);
+	glNormal3dv(N.p());
 	glVertex3dv(A.p());
 	glVertex3dv(B.p());
 	glVertex3dv(C.p());
 	glVertex3dv(D.p());
-};
+}
+
 
 void WriteNormal(Point A, Point B, Point C, Point D) {
 	Point N = getNormalSquare(A, B, C, D);

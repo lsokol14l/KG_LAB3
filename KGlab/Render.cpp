@@ -238,6 +238,10 @@ void Render(double delta_time)
 	glColor3f(0.2f, 0.7f, 1.0f);
 	glLineWidth(2.0f);
 
+	glDisable(GL_LIGHTING);
+	glDisable(GL_TEXTURE_2D);
+	glDisable(GL_BLEND);
+
 	// Рисуем B-сплайн
 	glBegin(GL_LINE_STRIP);
 	for (int i = 1; i < 6; ++i) {
@@ -253,6 +257,9 @@ void Render(double delta_time)
 		}
 	}
 	glEnd();
+	glEnable(GL_LIGHTING);
+	glEnable(GL_TEXTURE_2D);
+	glEnable(GL_BLEND);
 
 	// --- Призма едет по кривой туда-обратно ---
 	static float anim = 0.0f;
