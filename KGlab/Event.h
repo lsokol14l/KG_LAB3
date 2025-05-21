@@ -1,5 +1,6 @@
 ﻿//небольшая самописная библиотека для работы с событиями
-#pragma once
+#ifndef EVENT_H
+#define EVENT_H
 
 #include <list>
 #include <functional>
@@ -101,3 +102,5 @@ public:
    }  
 
 };
+
+#endif

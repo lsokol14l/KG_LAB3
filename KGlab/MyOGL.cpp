@@ -38,136 +38,6 @@ std::deque<Message> msg_deque;
 std::atomic_bool bRender;
 std::atomic_bool bMsg;
 
-
-
-class Camera
-{
-	double camDist = 5;
-
-	int camNz = 1;
-
-	double camX;
-	double camY;
-	double camZ;
-	int mouseX = -1, mouseY = -1;
-
-	bool drag = false;
-
-public:
-	//начальные углы камеры
-	double _fi1 = 1;
-	double _fi2 = 0.5;
-
-	Camera()
-	{
-		caclulateCameraPos();
-	}
-
-	double distance()
-	{
-		return camDist;
-	}
-
-	int nZ() const
-	{
-		return camNz;
-	}
-	double x() const
-	{
-		return  camX;
-	}
-	double y() const
-	{
-		return  camY;
-	}
-	double z() const
-	{
-		return  camZ;
-	}
-	double fi1() const
-	{
-		return  _fi1;
-	}
-	double fi2() const
-	{
-		return  _fi2;
-	}
-
-	void caclulateCameraPos()
-	{
-		camX = camDist * cos(_fi2) * cos(_fi1);
-		camY = camDist * cos(_fi2) * sin(_fi1);
-		camZ = camDist * sin(_fi2);
-		if (cos(_fi2) <= 0)
-			camNz = -1;
-		else
-			camNz = 1;
-	}
-
-	void Zoom(OpenGL* sender, MouseWheelEventArg arg)
-	{
-		if (arg.value < 0 && camDist <= 1)
-			return;
-		if (arg.value > 0 && camDist >= 100)
-			return;
-
-		camDist += 0.01 * arg.value;
-
-		caclulateCameraPos();
-	}
-
-	void MouseMovie(OpenGL* sender, MouseEventArg arg)
-	{
-		if (OpenGL::isKeyPressed('G'))
-			return;
-
-		if (mouseX == -1)
-		{
-			mouseX = arg.x;
-			mouseY = arg.y;
-			return;
-		}
-		int dx = mouseX - arg.x;
-		int dy = mouseY - arg.y;
-		mouseX = arg.x;
-		mouseY = arg.y;
-
-		if (drag)
-		{
-			_fi1 = _fi1 + 0.01 * dx;
-			_fi2 = _fi2 - 0.01 * dy;
-
-			caclulateCameraPos();
-		}
-	}
-	void MouseLeave(OpenGL* sender, MouseEventArg arg)
-	{
-		mouseX = -1;
-	}
-
-	void MouseStartDrag(OpenGL* sender, MouseEventArg arg)
-	{
-		drag = true;
-	}
-
-	void MouseStopDrag(OpenGL* sender, MouseEventArg arg)
-	{
-		drag = false;
-		mouseX = -1;
-	}
-
-	void SetUpCamera()
-	{
-		//сообщаем openGL настройки нашей камеры,
-		// где она находится и куда смотрит
-		// https://learn.microsoft.com/ru-ru/windows/win32/opengl/glulookat
-		glMatrixMode(GL_MODELVIEW);
-		glLoadIdentity();
-		gluLookAt(camX, camY, camZ, 0, 0, 0, 0, 0, camNz);
-	}
-
-} camera;
-
 void render_cycle ();
 void message_cycle();
 
@@ -213,21 +83,10 @@ void render_cycle ()
 {	
 		gl.init();
 
-		//================НАСТРОЙКА КАМЕРЫ======================
-		camera.caclulateCameraPos();
-
-		//привязываем камеру к событиям "движка"
-		gl.WheelEvent.reaction(&camera, &Camera::Zoom);
-		gl.MouseMovieEvent.reaction(&camera, &Camera::MouseMovie);
-		gl.MouseLeaveEvent.reaction(&camera, &Camera::MouseLeave);
-		gl.MouseLdownEvent.reaction(&camera, &Camera::MouseStartDrag);
-		gl.MouseLupEvent.reaction(&camera, &Camera::MouseStopDrag);
-
-
 		glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+		glEnable(GL_DEPTH_TEST);
 
-		glEnable(GL_DEPTH_TEST); //включаем z-буфер
-		
+		initRender();
 
 		auto end_render = std::chrono::steady_clock::now();
 	
@@ -237,7 +96,6 @@ void render_cycle ()
 			auto deltatime = cur_time - end_render;
 			double delta = 1.0*std::chrono::duration_cast<std::chrono::microseconds>(deltatime).count()/1000000;
 			end_render = cur_time;
-			camera.SetUpCamera();
 			gl.render(delta);
 		}
 }
@@ -431,9 +289,12 @@ void OpenGL::DrawAxes()
 
 }
 
+
 void OpenGL::render(double delta)
 {
 	
+	glMatrixMode(GL_MODELVIEW);
+
 	if (resize_pending)
 	{
 		resize_pending = false;
@@ -450,9 +311,12 @@ void OpenGL::render(double delta)
 	}
 	
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glLoadIdentity();
+			
 
-	camera.SetUpCamera();
-	gl.DrawAxes();
+	glDisable(GL_LIGHTING);
+		
+	
 	Render(delta);
 
 
