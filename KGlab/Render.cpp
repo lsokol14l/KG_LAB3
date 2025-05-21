@@ -69,6 +69,42 @@ void Render(double delta_time)
     O.y = b0 * points[seg - 1][1] + b1 * points[seg][1] + b2 * points[seg + 1][1];
     O.z = b0 * points[seg - 1][2] + b1 * points[seg][2] + b2 * points[seg + 1][2];
 
-    // Рисуем только одну призму в текущей позиции
-    Squads(O);
+    // --- Вычисляем касательный вектор (производная сплайна) ---
+    float db0 = -(1 - t);
+    float db1 = 1 - 2 * t;
+    float db2 = t;
+    float dx = db0 * points[seg - 1][0] + db1 * points[seg][0] + db2 * points[seg + 1][0];
+    float dy = db0 * points[seg - 1][1] + db1 * points[seg][1] + db2 * points[seg + 1][1];
+    float dz = db0 * points[seg - 1][2] + db1 * points[seg][2] + db2 * points[seg + 1][2];
+
+    // Если движемся назад — инвертируем направление
+    if (direction == -1) {
+        dx = -dx;
+        dy = -dy;
+        dz = -dz;
+    }
+
+    // Нормализуем вектор направления
+    float len = sqrt(dx * dx + dy * dy + dz * dz);
+    if (len < 1e-6f) len = 1.0f; // чтобы не делить на 0
+    dx /= len; dy /= len; dz /= len;
+
+    // --- Ориентируем призму вдоль направления движения ---
+    glPushMatrix();
+    glTranslatef((float)O.x, (float)O.y, (float)O.z);
+
+    // Ось X призмы должна совпадать с (dx, dy, dz)
+    // Для этого найдём угол и ось вращения между (1,0,0) и (dx,dy,dz)
+    float angle = acosf(dx) * 180.0f / 3.14159265f; // угол между (1,0,0) и (dx,dy,dz)
+    float rx = 0.0f, ry = -dz, rz = dy; // ось вращения (перпендикулярна обоим векторам)
+    float rlen = sqrt(rx * rx + ry * ry + rz * rz);
+    if (rlen > 1e-6f) {
+        rx /= rlen; ry /= rlen; rz /= rlen;
+        glRotatef(angle, rx, ry, rz);
+    }
+
+    // Рисуем призму в текущей позиции и ориентации
+    Squads(Point{ 0,0,0 });
+    glPopMatrix();
+
 }
