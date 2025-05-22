@@ -6,6 +6,10 @@
 #include <iostream>
 #include <fstream>
 
+#ifndef GLU_AUTO_NORMAL
+#define GLU_AUTO_NORMAL 100108
+#endif
+
 #ifdef _DEBUG
 #include <Debugapi.h> 
 struct debug_print
@@ -156,7 +160,8 @@ void DrawNURBSSurface(int uDegree, int vDegree,
 	// Настройка NURBS объекта
 	gluNurbsProperty(nurbsObject, GLU_SAMPLING_TOLERANCE, 25.0);
 	gluNurbsProperty(nurbsObject, GLU_DISPLAY_MODE, GLU_FILL);
-
+	//gluNurbsProperty(nurbsObject, GLU_AUTO_NORMAL, GL_TRUE);
+	//glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE);
 	// Создание узловых векторов
 	std::vector<GLfloat> uKnots, vKnots;
 	GenerateUniformKnotVector(uDegree, uNumPoints, uKnots);
@@ -165,13 +170,11 @@ void DrawNURBSSurface(int uDegree, int vDegree,
 	// Преобразование контрольных точек и весов в формат, необходимый для GLU
 	std::vector<GLfloat> ctrlPoints;
 	for (int i = 0; i < uNumPoints; i++) {
-		for (int j = 0; j < vNumPoints; j++) {
+		for (int j = vNumPoints - 1; j >= 0; j--) { // <-- инвертируем порядок по v
 			int idx = i * vNumPoints + j;
-			// Добавляем x, y, z, умноженные на вес
 			ctrlPoints.push_back(controlPoints[idx][0] * weights[idx][0]);
 			ctrlPoints.push_back(controlPoints[idx][1] * weights[idx][0]);
 			ctrlPoints.push_back(controlPoints[idx][2] * weights[idx][0]);
-			// Добавляем вес (w)
 			ctrlPoints.push_back(weights[idx][0]);
 		}
 	}
