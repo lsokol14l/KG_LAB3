@@ -2,6 +2,10 @@
 #include "GUItextRectangle.h"
 #include "Decomposition.h"
 
+#include <vector>
+#include <iostream>
+#include <fstream>
+
 #ifdef _DEBUG
 #include <Debugapi.h> 
 struct debug_print
@@ -69,6 +73,201 @@ void switchModes(OpenGL *sender, KeyEventArg arg)
 //Это самый простой способ что то написать на экране
 //но ооооочень не оптимальный
 GuiTextRectangle text;
+
+bool LoadNURBSParametersFromFile(const std::string& filename,
+	int& uDegree, int& vDegree,
+	int& uNumPoints, int& vNumPoints,
+	std::vector<std::vector<GLfloat>>& controlPoints,
+	std::vector<std::vector<GLfloat>>& weights) {
+	std::ifstream file(filename);
+	if (!file.is_open()) {
+		std::cerr << "Не удалось открыть файл для NURBS: " << filename << std::endl;
+		return false;
+	}
+
+	// Чтение степеней поверхности (u и v)
+	if (!(file >> uDegree >> vDegree)) {
+		std::cerr << "Ошибка при чтении степеней поверхности" << std::endl;
+		return false;
+	}
+
+	// Чтение количества контрольных точек (по u и v)
+	if (!(file >> uNumPoints >> vNumPoints)) {
+		std::cerr << "Ошибка при чтении количества контрольных точек" << std::endl;
+		return false;
+	}
+
+	// Инициализация массива для хранения контрольных точек и весов
+	controlPoints.resize(uNumPoints * vNumPoints, std::vector<GLfloat>(3, 0.0f));
+	weights.resize(uNumPoints * vNumPoints, std::vector<GLfloat>(1, 1.0f)); // По умолчанию все веса = 1.0
+
+	// Чтение координат контрольных точек и их весов
+	for (int i = 0; i < uNumPoints; i++) {
+		for (int j = 0; j < vNumPoints; j++) {
+			int idx = i * vNumPoints + j;
+			if (!(file >> controlPoints[idx][0] >> controlPoints[idx][1] >> controlPoints[idx][2] >> weights[idx][0])) {
+				std::cerr << "Ошибка при чтении координат и веса точки [" << i << "," << j << "]" << std::endl;
+				return false;
+			}
+		}
+	}
+
+	file.close();
+	return true;
+}
+
+// Функция для создания узловых векторов (равномерных)
+void GenerateUniformKnotVector(int degree, int numPoints, std::vector<GLfloat>& knots) {
+	int numKnots = numPoints + degree + 1;
+	knots.resize(numKnots);
+
+	// Формируем равномерный узловой вектор
+	// Первые degree+1 узлов равны 0
+	for (int i = 0; i <= degree; i++) {
+		knots[i] = 0.0f;
+	}
+
+	// Средние узлы равномерно распределены между 0 и 1
+	int numMiddleKnots = numKnots - 2 * (degree + 1);
+	if (numMiddleKnots > 0) {
+		for (int i = 1; i <= numMiddleKnots; i++) {
+			knots[degree + i] = (GLfloat)i / (numMiddleKnots + 1);
+		}
+	}
+
+	// Последние degree+1 узлов равны 1
+	for (int i = numKnots - degree - 1; i < numKnots; i++) {
+		knots[i] = 1.0f;
+	}
+}
+
+void DrawNURBSSurface(int uDegree, int vDegree,
+	int uNumPoints, int vNumPoints,
+	const std::vector<std::vector<GLfloat>>& controlPoints,
+	const std::vector<std::vector<GLfloat>>& weights) {
+
+	// Проверка на наличие GLU NURBS объекта
+	GLUnurbsObj* nurbsObject = gluNewNurbsRenderer();
+	if (!nurbsObject) {
+		std::cerr << "Не удалось создать NURBS объект" << std::endl;
+		return;
+	}
+
+	// Настройка NURBS объекта
+	gluNurbsProperty(nurbsObject, GLU_SAMPLING_TOLERANCE, 25.0);
+	gluNurbsProperty(nurbsObject, GLU_DISPLAY_MODE, GLU_FILL);
+
+	// Создание узловых векторов
+	std::vector<GLfloat> uKnots, vKnots;
+	GenerateUniformKnotVector(uDegree, uNumPoints, uKnots);
+	GenerateUniformKnotVector(vDegree, vNumPoints, vKnots);
+
+	// Преобразование контрольных точек и весов в формат, необходимый для GLU
+	std::vector<GLfloat> ctrlPoints;
+	for (int i = 0; i < uNumPoints; i++) {
+		for (int j = 0; j < vNumPoints; j++) {
+			int idx = i * vNumPoints + j;
+			// Добавляем x, y, z, умноженные на вес
+			ctrlPoints.push_back(controlPoints[idx][0] * weights[idx][0]);
+			ctrlPoints.push_back(controlPoints[idx][1] * weights[idx][0]);
+			ctrlPoints.push_back(controlPoints[idx][2] * weights[idx][0]);
+			// Добавляем вес (w)
+			ctrlPoints.push_back(weights[idx][0]);
+		}
+	}
+
+	// Рисование NURBS поверхности
+	glColor3f(0.0, 0.8, 0.2); // Цвет поверхности (зеленый)
+	gluBeginSurface(nurbsObject);
+	gluNurbsSurface(nurbsObject,
+		uKnots.size(), uKnots.data(),
+		vKnots.size(), vKnots.data(),
+		4 * vNumPoints, 4,  // Шаг между контрольными точками (4, так как каждая точка имеет x, y, z, w)
+		ctrlPoints.data(),
+		uDegree + 1, vDegree + 1,
+		GL_MAP2_VERTEX_4);  // Используем 4D контрольные точки (x, y, z, w)
+	gluEndSurface(nurbsObject);
+
+	// Рисование контрольных точек и сетки для наглядности
+	// Контрольные точки
+	glPointSize(5.0);
+	glColor3f(1.0, 0.0, 0.0); // Красный цвет для контрольных точек
+	glBegin(GL_POINTS);
+	for (int i = 0; i < uNumPoints * vNumPoints; i++) {
+		glVertex3f(controlPoints[i][0], controlPoints[i][1], controlPoints[i][2]);
+	}
+	glEnd();
+
+	// Соединения между контрольными точками (сетка)
+	glColor3f(0.5, 0.5, 0.5); // Серый цвет для сетки
+	glLineWidth(1.0);
+
+	// Горизонтальные линии
+	for (int i = 0; i < uNumPoints; i++) {
+		glBegin(GL_LINE_STRIP);
+		for (int j = 0; j < vNumPoints; j++) {
+			int idx = i * vNumPoints + j;
+			glVertex3f(controlPoints[idx][0], controlPoints[idx][1], controlPoints[idx][2]);
+		}
+		glEnd();
+	}
+
+	// Вертикальные линии
+	for (int j = 0; j < vNumPoints; j++) {
+		glBegin(GL_LINE_STRIP);
+		for (int i = 0; i < uNumPoints; i++) {
+			int idx = i * vNumPoints + j;
+			glVertex3f(controlPoints[idx][0], controlPoints[idx][1], controlPoints[idx][2]);
+		}
+		glEnd();
+	}
+
+	// Освобождение ресурсов
+	gluDeleteNurbsRenderer(nurbsObject);
+}
+
+void LR3Na54() {
+	// Параметры NURBS поверхности
+	int uDegree, vDegree;
+	int uNumPoints, vNumPoints;
+	std::vector<std::vector<GLfloat>> controlPoints;
+	std::vector<std::vector<GLfloat>> weights;
+
+	// Загрузка параметров из файла
+	if (LoadNURBSParametersFromFile("nurbs_surface.txt", uDegree, vDegree, uNumPoints, vNumPoints, controlPoints, weights)) {
+		// Рисование NURBS поверхности
+		DrawNURBSSurface(uDegree, vDegree, uNumPoints, vNumPoints, controlPoints, weights);
+	}
+	else {
+		// В случае ошибки при чтении - использовать примерные данные
+		std::cout << "Используются данные по умолчанию для NURBS поверхности" << std::endl;
+
+		// Пример данных
+		uDegree = 3;
+		vDegree = 3;
+		uNumPoints = 4;
+		vNumPoints = 4;
+
+		// Инициализация контрольных точек (примерно как в предыдущих примерах)
+		controlPoints.resize(16, std::vector<GLfloat>(3, 0.0f));
+		weights.resize(16, std::vector<GLfloat>(1, 1.0f));
+
+		// Заполнение контрольных точек сеткой 4x4
+		int idx = 0;
+		for (int i = 0; i < 4; i++) {
+			for (int j = 0; j < 4; j++) {
+				controlPoints[idx][0] = -10.0f + i * 6.6f;
+				controlPoints[idx][1] = -10.0f + j * 6.6f;
+				controlPoints[idx][2] = (i == 1 || i == 2) && (j == 1 || j == 2) ? 5.0f : 0.0f;
+				weights[idx][0] = 1.0f;
+				idx++;
+			}
+		}
+
+		DrawNURBSSurface(uDegree, vDegree, uNumPoints, vNumPoints, controlPoints, weights);
+	}
+}
+
 
 //айдишник для текстуры
 GLuint texId;
@@ -224,116 +423,7 @@ void Render(double delta_time)
 
 	//============ РИСОВАТЬ ТУТ ==============
 
-	// 7 контрольных точек
-	float points[7][3] = {
-		{ -8.0f, -4.0f, 1.0f },
-		{ -6.0f,  6.0f, 2.0f },
-		{ -2.0f, 10.0f, 1.0f },
-		{  0.0f,  4.0f, 3.0f },
-		{  4.0f,  8.0f, 1.0f },
-		{  6.0f,  0.0f, 4.0f },
-		{  8.0f,  6.0f, 5.0f }
-	};
-
-	glColor3f(0.2f, 0.7f, 1.0f);
-	glLineWidth(2.0f);
-
-	glDisable(GL_LIGHTING);
-	glDisable(GL_TEXTURE_2D);
-	glDisable(GL_BLEND);
-
-	// Рисуем B-сплайн
-	glBegin(GL_LINE_STRIP);
-	for (int i = 1; i < 6; ++i) {
-		for (int j = 0; j <= 32; ++j) {
-			float t = j / 32.0f;
-			float b0 = (1 - t) * (1 - t) / 2.0f;
-			float b1 = (1 + 2 * t - 2 * t * t) / 2.0f;
-			float b2 = t * t / 2.0f;
-			float x = b0 * points[i - 1][0] + b1 * points[i][0] + b2 * points[i + 1][0];
-			float y = b0 * points[i - 1][1] + b1 * points[i][1] + b2 * points[i + 1][1];
-			float z = b0 * points[i - 1][2] + b1 * points[i][2] + b2 * points[i + 1][2];
-			glVertex3f(x, y, z);
-		}
-	}
-	glEnd();
-	glEnable(GL_LIGHTING);
-	glEnable(GL_TEXTURE_2D);
-	glEnable(GL_BLEND);
-
-	// --- Призма едет по кривой туда-обратно ---
-	static float anim = 0.0f;
-	static int direction = 1; // 1 — вперёд, -1 — назад
-	anim += delta_time * 0.2f * direction; // скорость движения
-
-	// Проверяем границы и меняем направление
-	if (anim > 5.0f) {
-		anim = 5.0f;
-		direction = -1;
-	}
-	if (anim < 0.0f) {
-		anim = 0.0f;
-		direction = 1;
-	}
-
-	int seg = (int)anim + 1; // сегмент (от 1 до 5)
-	float t = anim - (int)anim; // локальный t на сегменте
-
-	// Безопасность индексов
-	if (seg < 1) seg = 1;
-	if (seg > 5) seg = 5;
-
-	// Вычисляем положение призмы на кривой
-	float b0 = (1 - t) * (1 - t) / 2.0f;
-	float b1 = (1 + 2 * t - 2 * t * t) / 2.0f;
-	float b2 = t * t / 2.0f;
-	Point O;
-	O.x = b0 * points[seg - 1][0] + b1 * points[seg][0] + b2 * points[seg + 1][0];
-	O.y = b0 * points[seg - 1][1] + b1 * points[seg][1] + b2 * points[seg + 1][1];
-	O.z = b0 * points[seg - 1][2] + b1 * points[seg][2] + b2 * points[seg + 1][2];
-
-	// --- Вычисляем касательный вектор (производная сплайна) ---
-	float db0 = -(1 - t);
-	float db1 = 1 - 2 * t;
-	float db2 = t;
-	float dx = db0 * points[seg - 1][0] + db1 * points[seg][0] + db2 * points[seg + 1][0];
-	float dy = db0 * points[seg - 1][1] + db1 * points[seg][1] + db2 * points[seg + 1][1];
-	float dz = db0 * points[seg - 1][2] + db1 * points[seg][2] + db2 * points[seg + 1][2];
-
-	// Если движемся назад — инвертируем направление
-	if (direction == -1) {
-		dx = -dx;
-		dy = -dy;
-		dz = -dz;
-	}
-
-	// Нормализуем вектор направления
-	float len = sqrt(dx * dx + dy * dy + dz * dz);
-	if (len < 1e-6f) len = 1.0f; // чтобы не делить на 0
-	dx /= len; dy /= len; dz /= len;
-
-	// --- Ориентируем призму вдоль направления движения ---
-	glPushMatrix();
-	glTranslatef((float)O.x, (float)O.y, (float)O.z);
-
-	// Ось X призмы должна совпадать с (dx, dy, dz)
-	// Для этого найдём угол и ось вращения между (1,0,0) и (dx,dy,dz)
-	float angle = acosf(dx) * 180.0f / 3.14159265f; // угол между (1,0,0) и (dx,dy,dz)
-	float rx = 0.0f, ry = -dz, rz = dy; // ось вращения (перпендикулярна обоим векторам)
-	float rlen = sqrt(rx * rx + ry * ry + rz * rz);
-	if (rlen > 1e-6f) {
-		rx /= rlen; ry /= rlen; rz /= rlen;
-		glRotatef(angle, rx, ry, rz);
-	}
-
-	// Рисуем призму в текущей позиции и ориентации
-	Squads(Point{ 0,0,0 });
-	glPopMatrix();
-
-
-	std::mt19937 gen(42);
-	std::uniform_real_distribution<double> r(0, 1);
-	glBindTexture(GL_TEXTURE_2D, texId);
+	LR3Na54();
 
 	//===============================================
 
